@@ -22,6 +22,12 @@ def table(path):
         return {r['query']: r for r in csv.DictReader(fh, delimiter='\t')}
 
 
+def write(path, text):
+    # Path.write_text(newline=...) exists only from Python 3.10; the package supports 3.9
+    with open(path, 'w', encoding='utf-8', newline='\n') as fh:
+        fh.write(text)
+
+
 def first_record():
     text = (EXAMPLE / 'queries.fasta').read_text(encoding='utf-8').split('>')[1]
     head, _, seq = text.partition('\n')
@@ -59,7 +65,7 @@ class InputHandling(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             hits = (EXAMPLE / 'hits.m8').read_text(encoding='utf-8')
             doubled = os.path.join(tmp, 'twice.m8')
-            Path(doubled).write_text(hits + hits, encoding='utf-8', newline='\n')
+            write(doubled, hits + hits)
             one, two = os.path.join(tmp, 'one.tsv'), os.path.join(tmp, 'two.tsv')
             a = cli('score', '-q', str(EXAMPLE / 'queries.fasta'), '--hits', str(EXAMPLE / 'hits.m8'), '-o', one, '--no-params')
             b = cli('score', '-q', str(EXAMPLE / 'queries.fasta'), '--hits', doubled, '-o', two, '--no-params')
@@ -71,7 +77,7 @@ class InputHandling(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             qid, seq = first_record()
             fa = os.path.join(tmp, 'clash.fasta')
-            Path(fa).write_text(f'>{qid}\n{seq}\n>sp|{qid}|ONE_HUMAN\n{seq}\n', encoding='utf-8', newline='\n')
+            write(fa, f'>{qid}\n{seq}\n>sp|{qid}|ONE_HUMAN\n{seq}\n')
             r = cli('score', '-q', fa, '--hits', str(EXAMPLE / 'hits.m8'), '-o', os.path.join(tmp, 'o.tsv'), '--no-params')
             self.assertIn('shared by several query identifiers', r.stderr)
 
@@ -95,7 +101,7 @@ class EndToEnd(unittest.TestCase):
         ids = [qid, '蛋白_one', f'sp|{qid}|ONE_HUMAN', 'lcl|myid_5', 'gi|12345|gb|AAA12345.1|']
         with tempfile.TemporaryDirectory() as tmp:
             fa, out = os.path.join(tmp, 'ids.fasta'), os.path.join(tmp, 'out.tsv')
-            Path(fa).write_text(''.join(f'>{i}\n{seq}\n' for i in ids), encoding='utf-8', newline='\n')
+            write(fa, ''.join(f'>{i}\n{seq}\n' for i in ids))
             r = cli('run', '-q', fa, '-o', out, '--no-params', '--threads', '2', '--tmpdir', tmp)
             self.assertEqual(r.returncode, 0, r.stderr)
             got = table(out)
