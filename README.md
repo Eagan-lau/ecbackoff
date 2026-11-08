@@ -14,54 +14,48 @@ It is a rule for deciding whether to inherit, not a function predictor. It needs
 
 Version 1.2 adds three **experimental** features, kept apart from the validated rule (see "Experimental features"): a ranking score for a function that is new to the record, suggestions of orphan enzyme activities, and the import of the output of CLEAN, DeepECtransformer, ProteInfer or DeepEC that you have run yourself.
 
+Version 1.2.1 changes only how queries are handled (identifiers of any form, early checks of options and output paths, repeated hit lines) and gives the same statements and scores as 1.2 (see "Checks").
+
 The method and its evaluation are described in a manuscript that is in preparation.
 
-## Install
+## Install and run
 
 ```bash
-pip install ecbackoff          # or: pip install ecbackoff-<version>-py3-none-any.whl
-                               # or the development version: pip install git+https://github.com/Eagan-lau/ecbackoff
-ecbackoff selftest             # checks the installation, no MMseqs2 needed
+pip install ecbackoff
+ecbackoff selftest                       # checks the files and the logic, no MMseqs2 needed
 ecbackoff run -q my_proteins.fasta -o result.tsv --threads 8
 ```
 
-The package has no Python dependencies and contains the model and the reference data (about 6 MB). **MMseqs2 is not installed by pip**; the `run` command needs it on the `PATH` (for example `conda install -c bioconda mmseqs2`, or the release at https://github.com/soedinglab/MMseqs2). Everything below that says `python ecbackoff.py` also works as `ecbackoff` or `python -m ecbackoff`.
+The development version: `pip install git+https://github.com/Eagan-lau/ecbackoff`. From a clone without installing: `PYTHONPATH=src python -m ecbackoff selftest`.
 
-## Run from the unpacked folder (without pip)
-
-Requirements: Python 3.9 or newer (tested with 3.9, 3.11, 3.13 and 3.14); [MMseqs2](https://github.com/soedinglab/MMseqs2) on the `PATH` (or given with `--mmseqs`) for the `run` command (the model was built and checked with 18.8cc5c, commit 8cc5c; another version gives a warning). Nothing else to install: unpack the folder and run `python ecbackoff.py`.
+Requirements: Python 3.9 or newer (tested with 3.9, 3.11, 3.13 and 3.14); [MMseqs2](https://github.com/soedinglab/MMseqs2) on the `PATH` (or given with `--mmseqs`) for the `run` command (the model was built and checked with 18.8cc5c, commit 8cc5c; another version gives a warning). MMseqs2 is not installed by pip (for example `conda install -c bioconda mmseqs2`, or the release page). The package has no Python dependencies and contains the model and the reference data (about 6 MB).
 
 Tested on Linux (`selftest` with Python 3.9 and 3.11; the end-to-end checks below with Python 3.11 and MMseqs2 18.8cc5c) and on Windows 11 (Python 3.14 and the official Windows build of MMseqs2 18-8cc5c, `mmseqs-win64.zip`; the program, its self-test and the command-line tests passed there, and the Windows search gave the same hit table and the same result table for the 30 bundled examples as Linux; paths with spaces and Chinese characters worked). Not tested on macOS.
 
-```bash
-python ecbackoff.py selftest                       # checks the files and the logic, no MMseqs2 needed
-python ecbackoff.py run -q my_proteins.fasta -o result.tsv --threads 8
-```
-
 **MMseqs2 on Windows.** Unpack `mmseqs-win64.zip`, then run `mmseqs\mmseqs.bat` once: it installs the BusyBox helper programs that MMseqs2's search workflows need (it may ask for administrator rights, or run `mmseqs\bin\busybox.exe --install -s mmseqs\bin` yourself). Without this step `run` stops with "Failed to execute ... easysearch.sh". Then put `mmseqs\bin` on the `PATH`, or pass `--mmseqs C:\path\to\mmseqs\bin\mmseqs.exe`.
 
-Size and speed: the unpacked folder is about 6 MB; a run needs room for the decompressed reference (about 10 MB) and the MMseqs2 work files (`--tmpdir` chooses where). A run on 400 proteins with 8 threads took about 7 seconds on a Linux cluster node and about 27 seconds on a Windows PC, search included.
+Size and speed: a run needs room for the decompressed reference (about 10 MB) and the MMseqs2 work files (`--tmpdir` chooses where). A run on 400 proteins with 8 threads took about 7 seconds on a Linux cluster node and about 27 seconds on a Windows PC, search included.
 
 If you prefer to run the search yourself:
 
 ```bash
-python ecbackoff.py reference -o reference.fasta   # the bundled reference sequences
+ecbackoff reference -o reference.fasta   # the bundled reference sequences
 mmseqs easy-search my_proteins.fasta reference.fasta hits.m8 tmp -s 7.5 -e 1e-3 --max-seqs 20000 --alignment-mode 3 \
       --format-output query,target,fident,qcov,tcov,evalue,bits
-python ecbackoff.py score -q my_proteins.fasta --hits hits.m8 -o result.tsv
+ecbackoff score -q my_proteins.fasta --hits hits.m8 -o result.tsv
 ```
 
 The search settings matter: the model was trained on hit tables from exactly this search. Hit tables from BLAST, DIAMOND or other MMseqs2 settings have not been validated.
 
-**Identifiers.** The identifier is the first word of each FASTA header. MMseqs2 prints the accession of UniProt-style headers (`sp|P12345|NAME` appears as `P12345` in the hit table); the program accepts both forms. Hits to the query itself (same identifier, or the accession inside a UniProt-style identifier) are dropped unless you give `--keep-self`; this matters only if your queries include enzymes that are in the reference.
+**Identifiers.** The identifier is the first word of each FASTA header, and any characters are accepted. With `run` the search itself sees synthetic identifiers (`q0000001`, ...) and the result carries yours, so non-ASCII characters, UniProt-style (`sp|P12345|NAME`) and NCBI-style (`gi|123|gb|AAA12345.1|`) identifiers, and two identifiers with the same accession all behave alike. With `score` the hit table comes from your own search: MMseqs2 prints only the accession of a UniProt-style header (`sp|P12345|NAME` appears as `P12345`), which the program accepts, but two identifiers sharing an accession cannot then be told apart and the program warns. Hits to the query itself (same identifier, or the accession inside a UniProt-style identifier) are dropped unless you give `--keep-self`; this matters only if your queries include enzymes that are in the reference.
 
-**Input checks.** The program stops with a message, before searching, on a missing or empty file, a file that is not FASTA, a repeated identifier; and on a hit table with the wrong number of columns, percentages instead of fractions, or identifiers that are not in the FASTA. It tolerates a byte-order mark, Windows line ends, lower case and wrapped lines. Empty sequences are not searched and get `none` with a note.
+**Input checks.** The program stops with a message, before searching, on a missing or empty file, a file that is not FASTA, a repeated identifier, an output path that could not be written, `--threads` below 1 or an implausible `--year`; and on a hit table with the wrong number of columns, percentages instead of fractions, or identifiers that are not in the FASTA. A hit table whose lines are repeated exactly is read once, with a warning. It tolerates a byte-order mark, Windows line ends, lower case and wrapped lines. Empty sequences are not searched and get `none` with a note.
 
-**Record of a run.** With `-o result.tsv` the program also writes `result.tsv.params.json`: version, command line, mode and cutoffs, prediction year, MMseqs2 version and settings, checksums of the inputs, counts. `--no-params` switches this off.
+**Record of a run.** With `-o result.tsv` the program also writes `result.tsv.params.json`: version, command line, mode and cutoffs, prediction year, MMseqs2 version and settings, checksums of the inputs, counts, and the absolute path of the query file. `--no-params` switches this off.
 
 ## Output
 
-One row per query, in the order of the FASTA, tab-separated. Example (first rows of `build/tool400_output.tsv`, cutoff mode):
+One row per query, in the order of the FASTA, tab-separated. Example (first rows of the output for 400 proteins sampled from proteins that have a neighbour, cutoff mode):
 
 | query | nearest_enzyme | identity | p_wrong_4digit | p_wrong_3digit | statement | statement_ec | identity_rule |
 |---|---|---|---|---|---|---|---|
@@ -155,28 +149,29 @@ Three of the features carry most of the signal: identity to the nearest enzyme, 
 
 ## Files
 
-(This table describes the unpacked folder of the zip / tar.gz release. In the pip package the program is `ecbackoff/__init__.py` and `data/` and `example/` sit inside the installed `ecbackoff` folder; `build/` is only in the release.)
-
 | file | content |
 |---|---|
-| `ecbackoff.py` | the program |
-| `data/model.json` | scaler and coefficients of the two models, search settings, evidence |
-| `data/reference.tsv.gz` | reference enzymes: accession, length, year of entry, EC numbers with the year each was established |
-| `data/reference.fasta.gz` | their sequences (for the search) |
-| `data/orphan.tsv.gz` | experimental: for every distinct EC set of a reference enzyme, its ten highest-ranked orphan activities (shared digits, reaction similarity, year created, name) |
-| `data/CHECKSUMS.sha256` | checksums of the data and example files, checked by `selftest` |
-| `example/` | 30 example proteins, their MMseqs2 hits and the expected output of the frozen model; used by `selftest` |
-| `build/` | the scripts that built the bundle and ran the checks below, with their outputs. `build_bundle.py` and the job scripts read the project's files on the cluster and cannot be run elsewhere; `edge_tests.py` (needs MMseqs2) and `win_tests.py` only need this folder. They are provenance, not part of using the tool |
+| `src/ecbackoff/__init__.py` | the program (`ecbackoff` on the command line, `python -m ecbackoff`) |
+| `src/ecbackoff/data/model.json` | scaler and coefficients of the two models, search settings, evidence |
+| `src/ecbackoff/data/reference.tsv.gz` | reference enzymes: accession, length, year of entry, EC numbers with the year each was established |
+| `src/ecbackoff/data/reference.fasta.gz` | their sequences (for the search) |
+| `src/ecbackoff/data/orphan.tsv.gz` | experimental: for every distinct EC set of a reference enzyme, its ten highest-ranked orphan activities (shared digits, reaction similarity, year created, name) |
+| `src/ecbackoff/data/CHECKSUMS.sha256` | checksums of the data and example files, checked by `selftest` |
+| `src/ecbackoff/example/` | 30 example proteins, their MMseqs2 hits and the expected output of the frozen model; used by `selftest` |
+| `tests/` | smoke tests of the installed package (version and `selftest`) |
+
+The scripts that built the reference and the orphan table and ran the larger checks below read the project's own files and are not part of this repository; they are to be archived with the paper [DOI to be added].
 
 ## Checks
 
-* **`selftest`** (passes with Python 3.9 and 3.11): the checksums of the data and example files; the reference table and the reference FASTA list the same 18,517 enzymes; the 30 bundled example proteins reproduce the released scores of the frozen model from their stored hits (maximum difference 5e-11); the three-digit risk is never above the four-digit risk; `match` mode gives the numbers of statements of the identity rule; and edge cases built from the example: a query with no neighbour, an empty sequence, a `sp|ACCESSION|NAME` identifier whose hits carry the accession only, a hit to the query itself (dropped, and kept with `--keep-self`), a hit table with percentages (refused); and, for the experimental features of 1.2: the new-function score reproduces the released values of the 30 examples (maximum difference 5e-11), the orphan table covers every EC set of the reference (5,817 sets, ten ranked suggestions each) and is ordered by shared digits, suggestions appear exactly for proteins at or above the score threshold, and small files in the formats of CLEAN, DeepECtransformer, ProteInfer, DeepEC and JSON lines are read and compared with the nearest enzyme.
-* **End-to-end on 400 proteins** from the released score table of the frozen model, with the program running the MMseqs2 search itself: all 400 have the same nearest enzyme as in the released table, and the two probabilities agree with the released values to within the four decimals of the output table (`build/verify_400.json`; the largest differences, 4.96e-5 and 5.00e-5, are the rounding of the fourth decimal). In an earlier build the 18 features agreed with the stored features to 1e-9 and did not depend on the number of search threads (`build/diag.py`).
+* **`selftest`** (passes with Python 3.9, 3.11, 3.13 and 3.14 on Linux and Windows 11; run for every commit by the repository's automatic checks): the checksums of the data and example files; the reference table and the reference FASTA list the same 18,517 enzymes; the 30 bundled example proteins reproduce the released scores of the frozen model from their stored hits (maximum difference 5e-11); the three-digit risk is never above the four-digit risk; `match` mode gives the numbers of statements of the identity rule; and edge cases built from the example: a query with no neighbour, an empty sequence, a `sp|ACCESSION|NAME` identifier whose hits carry the accession only, a hit to the query itself (dropped, and kept with `--keep-self`), a hit table with percentages (refused), identifiers of any form replaced by synthetic ones for the search and restored afterwards, a hit table pasted twice (counted once), two identifiers with one accession (reported); and, for the experimental features of 1.2: the new-function score reproduces the released values of the 30 examples (maximum difference 5e-11), the orphan table covers every EC set of the reference (5,817 sets, ten ranked suggestions each) and is ordered by shared digits, suggestions appear exactly for proteins at or above the score threshold, and small files in the formats of CLEAN, DeepECtransformer, ProteInfer, DeepEC and JSON lines are read and compared with the nearest enzyme.
+* **Version 1.2.1 against 1.2** (Windows 11, Python 3.14, MMseqs2 18-8cc5c): on 400 mutated reference proteins (plain and UniProt-style identifiers) and on the 30 bundled examples, `run` gave tables byte-identical to those of 1.2 in `cutoff` mode; `match` mode gave identical tables; `score` with a hit table written by 1.2 gave the same table; non-ASCII, emoji, `lcl|` and `gi|` identifiers and two identifiers with the same accession each gave the result of the same protein under a plain identifier; an unwritable output path, `--threads 0`, a `--year` outside 1995–2100 and a missing `--keep-hits` folder were refused in under a second, before the search.
+* **End-to-end on 400 proteins** from the released score table of the frozen model (run for 1.2 with Python 3.11 and MMseqs2 18.8cc5c): all 400 have the same nearest enzyme as in the released table, and the two probabilities agree with the released values to within the four decimals of the output table (the largest differences, 4.96e-5 and 5.00e-5, are the rounding of the fourth decimal); `p_new_function` agreed to 4.99e-5. In an earlier build the 18 features agreed with the stored features to 1e-9 and did not depend on the number of search threads.
 * **`run` and `score`** (with the hit table written by `run --keep-hits`) give identical tables.
-* **Command line with the real search** (`build/edge_tests.py`, 18 checks, all passed; `build/edge_tests.json`; on 1.2 the 400-protein end-to-end check also compares `p_new_function`, maximum difference 4.99e-5, the rounding of the fourth decimal, `build/verify_400.json`): UniProt-style identifiers (MMseqs2 prints only the accession, which the program resolves); a file with a byte-order mark, Windows line ends, lower case and wrapped lines; empty and unmatched queries; the parameter file; refusal of repeated identifiers, a missing or non-FASTA file, a wrong `--mmseqs`, a missing `--tmpdir`, percentages, unknown identifiers and too few columns in a hit table; `--tmpdir` being used and cleaned up; a pipe closed early; the `reference` command.
-* **Speed:** a run on 400 proteins took 7.4 seconds with 8 threads on a Linux cluster node (`build/check_1987126.out`) and 27 seconds on the Windows PC.
-* **Windows 11, Python 3.14, official MMseqs2 Windows build (checked after the Linux build; the scripts in `build/` that ran the Linux checks were made portable for this):** `selftest` passed; `score` on the 30 examples reproduced the released scores to the four printed decimals; `run` on the 30 examples gave a hit table identical to the Linux one (after sorting) and an identical result table; the 18 command-line checks of `build/edge_tests.py` passed with the real search (`build/edge_tests_windows.json`); 28 further checks of `score`, the experimental features, input validation and error messages passed with paths containing spaces and Chinese characters (`build/win_tests.py`); a run on 400 proteins took about 27 seconds with 8 threads.
-* **Not checked:** macOS; other MMseqs2 versions; hit tables from other search tools; batches of many thousands of proteins.
+* **Command line with the real search** (18 checks on 1.2, all passed; the scripts are not part of this repository): UniProt-style identifiers; a file with a byte-order mark, Windows line ends, lower case and wrapped lines; empty and unmatched queries; the parameter file; refusal of repeated identifiers, a missing or non-FASTA file, a wrong `--mmseqs`, a missing `--tmpdir`, percentages, unknown identifiers and too few columns in a hit table; `--tmpdir` being used and cleaned up; a pipe closed early; the `reference` command.
+* **Speed:** a run on 400 proteins took 7.4 seconds with 8 threads on a Linux cluster node and 27 seconds on the Windows PC.
+* **Windows 11, Python 3.14, official MMseqs2 Windows build:** `selftest` passed; `score` on the 30 examples reproduced the released scores to the four printed decimals; `run` on the 30 examples gave a hit table identical to the Linux one (after sorting) and an identical result table; the 18 command-line checks passed with the real search; 28 further checks of `score`, the experimental features, input validation and error messages passed with paths containing spaces and Chinese characters; a run on 400 proteins took about 27 seconds with 8 threads.
+* **Not checked:** macOS; other MMseqs2 versions; hit tables from other search tools; batches of many thousands of proteins; the readers of `--external` on the output of the real tools.
 
 ## Licence and data
 

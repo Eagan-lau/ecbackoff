@@ -1,8 +1,11 @@
-name: selftest
+name: tests
 
 on:
   push:
   pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   selftest:
@@ -11,7 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        python-version: ["3.9", "3.11", "3.13"]
+        python-version: ["3.9", "3.11", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -21,5 +24,43 @@ jobs:
         run: python -m pip install .
       - name: Self-test (checksums, bundled example, edge cases; no MMseqs2 needed)
         run: ecbackoff selftest
-      - name: Smoke tests
+      - name: Input-handling tests (no search)
         run: python -m unittest discover -s tests -v
+
+  search:
+    # runs the real search with the MMseqs2 release the model was built with
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: MMseqs2 18-8cc5c
+        run: |
+          curl -fsSL -o mmseqs.tar.gz https://github.com/soedinglab/MMseqs2/releases/download/18-8cc5c/mmseqs-linux-avx2.tar.gz
+          tar xzf mmseqs.tar.gz
+          echo "$PWD/mmseqs/bin" >> "$GITHUB_PATH"
+      - name: Install
+        run: python -m pip install .
+      - name: End-to-end tests (example run, identifier forms)
+        run: |
+          mmseqs version
+          python -m unittest discover -s tests -v
+
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build and check the distribution files
+        run: |
+          python -m pip install build twine
+          python -m build
+          twine check dist/*
+      - name: Install the wheel in a clean directory and run the self-test
+        run: |
+          python -m venv /tmp/venv
+          /tmp/venv/bin/pip install dist/*.whl
+          cd /tmp && /tmp/venv/bin/ecbackoff selftest

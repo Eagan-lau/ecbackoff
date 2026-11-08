@@ -20,7 +20,7 @@ Commands
     selftest   checks the installation: file checksums, bundled example, edge cases
     info       model, reference and evidence summary
 
-Standard library only (Python 3.8 or newer). See README.md.
+Standard library only (Python 3.9 or newer). See README.md.
 """
 import argparse
 import bisect
@@ -39,7 +39,7 @@ import subprocess
 import sys
 import tempfile
 
-VERSION = '1.2'
+VERSION = '1.2.1'
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(HERE, 'data')
 EXAMPLE = os.path.join(HERE, 'example')
@@ -116,19 +116,23 @@ def read_fasta(path):
 
 
 def write_clean_fasta(src, dst):
-    """Copy of the query FASTA for the search: one-word identifiers, letters only, empty sequences left out. Returns the identifiers left out."""
-    empty, cur, buf = [], None, []
+    """Copy of the query FASTA for the search: sequences under synthetic ASCII identifiers (q0000001, q0000002, ...), letters only, empty sequences left out.
+    The search therefore never sees the identifiers of the user (non-ASCII characters, 'sp|ACC|NAME', 'gi|123|gb|AAA.1|' and two identifiers with the same
+    accession all behave alike). Returns the identifiers left out and {synthetic identifier: original identifier}."""
+    empty, mapping, cur, buf = [], {}, None, []
 
     def flush(fh):
         if cur is None:
             return
         seq = ''.join(buf)
         if seq:
-            fh.write(f'>{cur}\n{seq}\n')
+            sid = 'q%07d' % (len(mapping) + 1)
+            mapping[sid] = cur
+            fh.write(f'>{sid}\n{seq}\n')
         else:
             empty.append(cur)
 
-    with open(dst, 'w', newline='\n') as fh:
+    with open(dst, 'w', encoding='utf-8', newline='\n') as fh:
         for line in lines(src):
             line = line.strip()
             if not line:
@@ -139,7 +143,44 @@ def write_clean_fasta(src, dst):
             else:
                 buf.append(line.replace('*', '').replace('-', '').replace(' ', '').upper())
         flush(fh)
-    return empty
+    return empty, mapping
+
+
+def translate_hits(src, dst, mapping):
+    """Hit table of the search with the synthetic query identifiers replaced by the identifiers of the query FASTA."""
+    with open(src, 'r', encoding='utf-8', errors='replace', newline='') as a, open(dst, 'w', encoding='utf-8', newline='\n') as b:
+        for line in a:
+            line = line.rstrip('\r\n')
+            if not line:
+                continue
+            q, sep, rest = line.partition('\t')
+            b.write(mapping.get(q, q) + sep + rest + '\n')
+
+
+def check_writable(path, what):
+    """Stop before a long search if the result could not be written afterwards."""
+    if not path or path == '-':
+        return
+    full = os.path.abspath(path)
+    if os.path.isdir(full):
+        die(f'{what} {path!r} is a directory')
+    folder = os.path.dirname(full)
+    if not os.path.isdir(folder):
+        die(f'{what}: the directory {folder!r} does not exist')
+    if not os.access(folder, os.W_OK):
+        die(f'{what}: the directory {folder!r} is not writable')
+
+
+def warn_accession_clashes(qids):
+    """Two query identifiers that share a UniProt accession cannot be told apart in a hit table that prints only the accession."""
+    by = {}
+    for q in qids:
+        by.setdefault(accession_of(q), []).append(q)
+    clash = {a: qs for a, qs in by.items() if len(qs) > 1}
+    if clash:
+        a, qs = next(iter(sorted(clash.items())))
+        warn(f'{len(clash)} accession(s) are shared by several query identifiers (e.g. {a}: {qs[:3]}); if the hit table prints only the accession, their hits cannot be told apart. '
+             'Give every protein a distinct identifier, or use the "run" command, which does not have this problem')
 
 
 def pref3(ecs):
@@ -154,7 +195,7 @@ class Reference:
         self._p3 = {}
         path = os.path.join(data_dir, 'reference.tsv.gz')
         if not os.path.exists(path):
-            die(f'reference data not found: {path} (is the data/ folder next to ecbackoff.py?)')
+            die(f'reference data not found: {path} (is the installation complete? "ecbackoff selftest" checks it)')
         for line in lines(path):
             acc, length, year, ecs = line.split('\t')
             self.length[acc], self.year[acc] = int(length), int(year)
@@ -347,7 +388,7 @@ def make_alias(qids):
 def read_hits(path, ref, qids, keep_self):
     """Hits that qualify as neighbours (both sequences covered to at least 70%), best bit score first. Stops with a clear message on a malformed table."""
     alias = make_alias(qids)
-    per, unknown, n_hits, n_ref, n_badbits = {}, {}, 0, 0, 0
+    per, unknown, n_hits, n_ref, n_badbits, n_foreign, n_dup, seen = {}, {}, 0, 0, 0, 0, 0, set()
     for n, line in enumerate(lines(path), 1):
         if not line.strip():
             continue
@@ -371,7 +412,13 @@ def read_hits(path, ref, qids, keep_self):
             unknown[q0] = unknown.get(q0, 0) + 1
             continue
         if t not in ref.labels:
+            n_foreign += 1
             continue
+        key = (q,) + tuple(p[1:7])
+        if key in seen:      # a line repeated exactly (a hit table pasted twice); a genuine search prints each alignment once
+            n_dup += 1
+            continue
+        seen.add(key)
         n_ref += 1
         if not keep_self and (t == q or t == accession_of(q)):
             continue
@@ -388,6 +435,10 @@ def read_hits(path, ref, qids, keep_self):
         die('none of the hits points to a reference enzyme; the search must be run against the bundled reference (ecbackoff reference -o reference.fasta)')
     if n_badbits:
         warn(f'{n_badbits} hit(s) with a bit score of 0 or less were ignored')
+    if n_dup:
+        warn(f'{n_dup} repeated line(s) of the hit table were ignored (was the table concatenated twice?)')
+    if n_foreign:
+        warn(f'{n_foreign} hit(s) point to targets that are not reference enzymes and were ignored (was the search run against the reference from "ecbackoff reference"?)')
     for q in per:
         per[q].sort(key=lambda x: -x[4])   # stable: ties keep file order
     return per
@@ -563,6 +614,8 @@ def check_options(args):
         die('--orphan-min-p must be a probability between 0 and 1')
     if args.orphan_top < 0:
         die('--orphan-top must be 0 or more')
+    if args.year and not (1995 <= args.year <= 2100):
+        die('--year must be a year between 1995 and 2100 (0 means the frozen default)')
     if not getattr(args, 'externals', None):
         args.externals = parse_external_args(args.external)
 
@@ -588,7 +641,10 @@ def write_params(args, c, extra):
 def process(args, hits_path, qlens=None):
     check_options(args)
     ref, model = Reference(), load_model()
+    scoring_only = qlens is None
     qlens = qlens if qlens is not None else read_fasta(args.query)
+    if scoring_only:
+        warn_accession_clashes(list(qlens))
     per = read_hits(hits_path, ref, list(qlens), args.keep_self)
     py = args.year if args.year else model['prediction_year']
     if py != model['prediction_year']:
@@ -611,6 +667,7 @@ def finish_command(args, rows, extra):
 
 
 def cmd_score(args):
+    check_writable(args.out, 'output table')
     rows = process(args, args.hits)
     finish_command(args, rows, {'hit_table': os.path.abspath(args.hits), 'hit_table_sha256': sha256_of(args.hits)})
 
@@ -638,6 +695,10 @@ def find_mmseqs(arg):
 def cmd_run(args):
     check_options(args)
     qlens = read_fasta(args.query)   # validate before searching
+    if args.threads < 1:
+        die('--threads must be 1 or more')
+    check_writable(args.out, 'output table')
+    check_writable(args.keep_hits, '--keep-hits')
     mm, mm_version = find_mmseqs(args.mmseqs)
     if args.tmpdir and not os.path.isdir(args.tmpdir):
         die(f'--tmpdir {args.tmpdir!r} is not a directory')
@@ -645,21 +706,25 @@ def cmd_run(args):
         refq, clean = os.path.join(tmp, 'reference.fasta'), os.path.join(tmp, 'queries.fasta')
         with gzip.open(os.path.join(DATA, 'reference.fasta.gz'), 'rb') as src, open(refq, 'wb') as dst:
             shutil.copyfileobj(src, dst)
-        empty = write_clean_fasta(args.query, clean)
+        empty, mapping = write_clean_fasta(args.query, clean)
         if empty:
             warn(f'{len(empty)} query sequence(s) are empty and are not searched (e.g. {empty[:3]})')
         if len(empty) == len(qlens):
             hits = os.path.join(tmp, 'hits.m8')
             open(hits, 'w').close()
         else:
-            hits = args.keep_hits or os.path.join(tmp, 'hits.m8')
-            cmd = [mm, 'easy-search', clean, refq, hits, os.path.join(tmp, 'tmp')] + SEARCH_ARGS + ['--threads', str(args.threads), '-v', '1', '--format-output', FORMAT]
+            raw = os.path.join(tmp, 'hits_raw.m8')
+            cmd = [mm, 'easy-search', clean, refq, raw, os.path.join(tmp, 'tmp')] + SEARCH_ARGS + ['--threads', str(args.threads), '-v', '1', '--format-output', FORMAT]
             print('[ecbackoff] ' + shlex.join(cmd), file=sys.stderr)
             r = subprocess.run(cmd)
             if r.returncode != 0:
-                die(f'MMseqs2 failed with exit code {r.returncode}; the command is printed above')
-            if not os.path.exists(hits):
+                hint = ('; on Windows the official MMseqs2 build needs its BusyBox helpers installed once (run mmseqs.bat once, or "busybox --install -s bin" '
+                        'in its bin folder)') if os.name == 'nt' else ''
+                die(f'MMseqs2 failed with exit code {r.returncode}; the command is printed above{hint}')
+            if not os.path.exists(raw):
                 die('MMseqs2 finished without writing a hit table')
+            hits = args.keep_hits or os.path.join(tmp, 'hits.m8')
+            translate_hits(raw, hits, mapping)   # the search saw synthetic identifiers; the table kept or scored carries the identifiers of the query FASTA
         rows = process(args, hits, qlens)
         finish_command(args, rows, {'mmseqs': mm_version, 'search': ' '.join(SEARCH_ARGS), 'threads': args.threads})
 
@@ -795,6 +860,30 @@ def cmd_selftest(args):
             check('percent identity in the hit table is refused', False)
         except SystemExit:
             check('percent identity in the hit table is refused', True)
+        # identifiers of any form are hidden from the search, and a hit table pasted twice is not counted twice
+        odd = os.path.join(tmp, 'odd.fasta')
+        with open(odd, 'w', encoding='utf-8', newline='\n') as fh:
+            fh.write('>蛋白_one comment\nMKV\n>sp|P12345|A_HUMAN\nMKVL\n>P12345\nMKVLA\n>emptyone\n')
+        empty_ids, mp = write_clean_fasta(odd, os.path.join(tmp, 'odd_clean.fasta'))
+        check('query identifiers of any form are replaced by synthetic ASCII ones for the search',
+              list(mp.values()) == ['蛋白_one', 'sp|P12345|A_HUMAN', 'P12345'] and empty_ids == ['emptyone'] and all(k.isascii() for k in mp))
+        raw_hits, tr_hits = os.path.join(tmp, 'raw.m8'), os.path.join(tmp, 'translated.m8')
+        with open(raw_hits, 'w', newline='\n') as fh:
+            fh.write('q0000002\tT1\t0.5\t1\t1\t0\t10\n')
+        translate_hits(raw_hits, tr_hits, mp)
+        with open(tr_hits, encoding='utf-8') as fh:
+            check('the hit table gets the identifiers of the query FASTA back', fh.read().startswith('sp|P12345|A_HUMAN\tT1\t'))
+        hp3 = os.path.join(tmp, 'twice.m8')
+        with open(hp3, 'w') as fh:
+            fh.write(('\n'.join(x for x in hit_lines if x.split('\t')[0] == first) + '\n') * 2)
+        with contextlib.redirect_stderr(io.StringIO()):
+            once = read_hits(h, ref, list(qlens), False)[first]
+            twice = read_hits(hp3, ref, list(qlens), False)[first]
+        check('a hit table pasted twice is not counted twice', len(once) == len(twice))
+        buf_err = io.StringIO()
+        with contextlib.redirect_stderr(buf_err):
+            warn_accession_clashes(['sp|P12345|A_HUMAN', 'P12345'])
+        check('two query identifiers with the same accession are reported', 'shared by several query identifiers' in buf_err.getvalue())
 
     # 5. experimental features: new-function score, orphan suggestions, import of other predictors' output
     expn = {k: d for k, d in exp.items() if 'p_new_function' in d and d['p_new_function'] != ''}
@@ -918,8 +1007,13 @@ def build_parser():
 
 
 def main(argv=None):
-    if sys.version_info < (3, 8):
-        die('Python 3.8 or newer is needed')
+    if sys.version_info < (3, 9):
+        die('Python 3.9 or newer is needed')
+    for stream in (sys.stdout, sys.stderr):   # a console with a narrow code page must not crash the program on an unusual identifier
+        try:
+            stream.reconfigure(errors='replace')
+        except (AttributeError, ValueError, OSError):
+            pass
     args = build_parser().parse_args(argv)
     try:
         args.func(args)

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.1
+
+Input handling only; the statements and scores of 1.2 are reproduced exactly (byte-identical tables on 400 mutated reference proteins and on the 30 bundled examples, in `cutoff` and `match` mode, and `score` on a hit table written by 1.2).
+
+* The search sees synthetic identifiers and the result carries yours: non-ASCII or emoji identifiers (they failed or crashed on a console with a narrow code page), NCBI-style `lcl|` and `gi|` identifiers (failed after the search) and two identifiers with the same accession such as `Q3YZV5` and `sp|Q3YZV5|NAME` (silently merged) now give the result of the same protein under a plain identifier. A hit table written with `--keep-hits` carries the identifiers of your FASTA.
+* Refused before the search: an output path or `--keep-hits` folder that cannot be written, `--threads` below 1, a `--year` outside 1995–2100.
+* `score`: a hit table whose lines are repeated exactly is read once, with a warning; hits to targets that are not reference enzymes are reported; two query identifiers with one accession are reported.
+* On Windows a failed MMseqs2 search points to the BusyBox helpers that the official build needs.
+* Python 3.9 or newer, as stated in the metadata (the program had still said 3.8).
+* The README describes only what the repository contains; the tests of input handling and an end-to-end test with the real search were added, and the automatic checks now also run Python 3.14, the search itself with MMseqs2 18-8cc5c, and build, `twine check` and a wheel install.
+
 ## 1.2
 
 * Requires Python 3.9 or newer (tested with 3.9, 3.11, 3.13 and 3.14).
