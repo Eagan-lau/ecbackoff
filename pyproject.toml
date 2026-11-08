@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ecbackoff"
+dynamic = ["version"]
+description = "Inherit an enzyme's EC number only where the neighbourhood of its nearest characterized relative supports it; otherwise three digits, or nothing."
+readme = "README.md"
+requires-python = ">=3.8"
+license = "MIT AND CC-BY-4.0 AND LicenseRef-IUBMB-ExplorEnz"
+license-files = ["LICENSE"]
+keywords = ["enzyme", "EC number", "function transfer", "annotation", "MMseqs2", "bioinformatics"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dependencies = []
+# To be filled in before the first upload to PyPI (metadata of an uploaded version cannot be changed):
+# authors = [{ name = "NAME", email = "ADDRESS" }]
+
+[project.urls]
+Homepage = "https://github.com/Eagan-lau/ecbackoff"
+Source = "https://github.com/Eagan-lau/ecbackoff"
+Issues = "https://github.com/Eagan-lau/ecbackoff/issues"
+
+[project.scripts]
+ecbackoff = "ecbackoff:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+ecbackoff = ["data/*", "example/*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "ecbackoff.VERSION"}

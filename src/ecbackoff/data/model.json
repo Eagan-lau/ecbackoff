@@ -1,0 +1,181 @@
+{
+ "name": "ecbackoff",
+ "version": "1.2",
+ "reference_release": "UniProtKB/Swiss-Prot 2026_04 (experimentally characterized enzymes with a complete EC number)",
+ "prediction_year": 2027,
+ "features": [
+  "ident",
+  "log_bits",
+  "qcov",
+  "tcov",
+  "margin",
+  "log_nnb",
+  "k_agree",
+  "k_single",
+  "log_k_distinct",
+  "nn_nlabels",
+  "log_qlen",
+  "abs_log_lenratio",
+  "log_label_freq",
+  "l3_agree_k",
+  "log_k_l3_distinct",
+  "log_fam_n_ec",
+  "ident_other",
+  "nn_age"
+ ],
+ "scaler": {
+  "mean": [
+   0.5578161006926845,
+   5.9108251976007775,
+   0.9371305119107958,
+   0.9370577800304105,
+   0.3700193314873034,
+   1.9215343934480915,
+   0.6367833476804587,
+   0.2043419496536577,
+   1.2401910837653058,
+   1.213887480993411,
+   6.0518180427767145,
+   0.0511973689275346,
+   1.8764183005616906,
+   0.9175463331697492,
+   0.813656606584254,
+   1.4712550770517305,
+   0.18640420679168782,
+   7.301909106267951
+  ],
+  "scale": [
+   0.22635147579362577,
+   0.8496464129136309,
+   0.07429505803105135,
+   0.07465254340432198,
+   0.38210179594714805,
+   1.117312833244845,
+   0.42320319506114573,
+   0.40321993659217764,
+   0.5901490845906248,
+   0.6377252043261794,
+   0.5040256890588428,
+   0.07155232761433625,
+   1.1495465593245926,
+   0.23257147327428881,
+   0.24047584407365086,
+   0.9939103286638645,
+   0.2045202952768756,
+   5.949163593474221
+  ]
+ },
+ "training_years": [
+  1995,
+  2024
+ ],
+ "wrong_4digit": {
+  "coef": [
+   -1.4911028378161957,
+   -0.5681373746847082,
+   0.01948990965966641,
+   -0.04912640068736431,
+   -0.42634734051951134,
+   -0.32427409547142494,
+   -0.09315252048617138,
+   0.43197880156140933,
+   -0.06810492216154912,
+   -0.05603492290877284,
+   0.24937067554481948,
+   -0.07693943223733192,
+   -0.6858230947408552,
+   0.0411701178919426,
+   -0.001092998364257139,
+   0.9281492933992431,
+   0.7939754517062817,
+   -0.052126469305057876
+  ],
+  "intercept": -1.754981543637892,
+  "training_rows": 11838,
+  "training_positives": 3628,
+  "outcome": "the nearest enzyme carries none of the protein's EC numbers"
+ },
+ "wrong_3digit": {
+  "coef": [
+   -1.0415196500246886,
+   -0.7584723725220328,
+   0.030641061995749407,
+   0.004332300113265024,
+   -0.3250334156691731,
+   -0.02716052848490527,
+   0.40775424105052777,
+   0.4135964590950681,
+   -0.503323750953128,
+   -0.0527321817061981,
+   0.3945923131175354,
+   -0.03381485940264585,
+   -0.33424450110001974,
+   -0.5922868137257034,
+   0.2565994506143959,
+   0.4017816693938966,
+   0.6635663426267169,
+   0.05905468782388034
+  ],
+  "intercept": -3.8715161940013205,
+  "training_rows": 11838,
+  "training_positives": 785,
+  "outcome": "the first three digits of the nearest enzyme's EC numbers share nothing with the protein's"
+ },
+ "new_function": {
+  "coef": [
+   -1.3736524379121189,
+   -0.44238108778268165,
+   0.12559874785249522,
+   -0.04524814004892462,
+   -0.20002664256196476,
+   -0.5770989423806117,
+   0.21341149650745733,
+   0.10089891990702878,
+   -0.09025218664888465,
+   -0.009636401644506335,
+   0.2072389476881407,
+   -0.08595048119225066,
+   -0.9289300724322195,
+   -0.10141845692211512,
+   -0.007254387137079896,
+   1.0925862866186158,
+   0.5354807326701562,
+   -0.040566370094987
+  ],
+  "intercept": -2.4958731202680053,
+  "training_rows": 11838,
+  "training_positives": 2329,
+  "outcome": "no earlier characterized protein carries any of the protein's EC numbers (a function new to the record); experimental, a ranking score"
+ },
+ "search": {
+  "program": "MMseqs2 18.8cc5c",
+  "args": "-s 7.5 -e 1e-3 --max-seqs 20000 --alignment-mode 3",
+  "format": "query,target,fident,qcov,tcov,evalue,bits"
+ },
+ "neighbour_rule": {
+  "min_qcov": 0.7,
+  "min_tcov": 0.7,
+  "topk": 10
+ },
+ "defaults": {
+  "identity_hi": 0.6,
+  "identity_lo": 0.4,
+  "cutoff4": 0.1,
+  "cutoff3": 0.1
+ },
+ "evidence": [
+  "Replay 2000-2024 (one 2026 snapshot dated by the papers cited), 10,559 proteins with a neighbour, models trained only on earlier years: with the same number of statements as the 60%/40% identity rule, 3.1% of statements were wrong against 7.5% for the identity rule (four digits 3.5% against 9.7%; three digits 2.6% against 4.8%). Release-clock replay with the labels of the time (3,572 proteins, 2016-2026): 7.8% against 15.4%.",
+  "Identity calibrated within Pfam families on earlier proteins gave 4.3% wrong. Family information accounts for about half to four fifths of the gain depending on the replay; the neighbourhood model's further gain over that rule was 1.2 points in the main replay and was not shown (-0.45, -0.96 to 0.03) after removing proteins whose EC numbers were created after the test year.",
+  "Cutoff mode with the defaults 0.10/0.10 (chosen after looking at the replay, so descriptive): four digits for 41.3% of proteins with 3.9% wrong, three digits for a further 41.9% with 4.5% wrong, nothing for 16.9%.",
+  "For proteins whose sequence cluster had no earlier member (11.9% of the replay) the identity rule makes almost no statement; the model still ranked transfer failures there (AUC 0.79 against 0.54 for identity, post hoc), and the cutoffs gave four digits for 57 of 1,256 proteins with 8.8% wrong and three digits for 347 with 9.8% wrong.",
+  "Predicted probabilities followed observed frequencies in the replay, but in an external check on present-day proteins transfer failed more often than predicted (16.7% against 13.0% with a propagated EC number, 62.8% against 39.6% with no catalytic annotation). Treat the probabilities as approximate.",
+  "EXPERIMENTAL p_new_function (version 1.2): in the replay the frozen-type model separated proteins with a function new to the record from the rest with AUC 0.867 against 0.771 for identity, and 65.9% of the top-ranked tenth of each year carried a new function against 19.6% overall. In an external check on present-day proteins the gain over identity was small and not shown (AUC 0.679 against 0.659) and the probabilities were three to seven times too high: use it to rank, not as a probability.",
+  "EXPERIMENTAL orphan_candidates (version 1.2): for 640 new-function enzymes whose function was an orphan activity and that had an earlier neighbour, the rule (shared EC digits with the nearest enzyme, then reaction similarity) put the true activity among its first ten suggestions for 50.0% (45.2-55.1; first 16.9%, first five 38.1%); chance was 0.57%. Over all proteins in the top-ranked tenth by new-function score it was 7.9% (first 2.1%), because only 18.6% of them were orphan-type new functions. A hypothesis generator.",
+  "EXPERIMENTAL import of CLEAN, DeepECtransformer, ProteInfer and DeepEC output: the program does not run these tools. In the replay of the paper none of them returned the correct complete EC number more often than the best sequence hit on enzymes described after their training (CLEAN not shown to differ from its own training set; the other three clearly lower)."
+ ],
+ "provenance": {
+  "four_digit_model": "atlas_v2_20261106/frozen_model.json (second freeze)",
+  "three_digit_model": "fitted on the same rows and scaler on 2026-11-07, not pre-specified",
+  "reference": "atlas_v2_20261106/reference_exp_2026_04.fasta.gz"
+ }
+}

@@ -1,0 +1,53 @@
+MIT License
+
+Copyright (c) 2026 the authors of ecbackoff
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Third-party data
+
+The ecbackoff code is licensed under MIT above. The bundled reference and
+example sequences are subsets of UniProtKB/Swiss-Prot from the UniProt
+Consortium (https://www.uniprot.org/uniprot). The reference sequences were
+selected from release 2026_04. The reference table combines selected
+UniProtKB/Swiss-Prot annotations with data from the ENZYME nomenclature
+database, maintained by the Swiss-Prot group at the SIB Swiss Institute
+of Bioinformatics (https://enzyme.expasy.org/). The sequences and
+annotations were selected and reformatted for ecbackoff.
+
+UniProtKB/Swiss-Prot and the ENZYME database are licensed under the
+Creative Commons Attribution 4.0 International license
+(https://creativecommons.org/licenses/by/4.0/).
+
+LicenseRef-IUBMB-ExplorEnz
+
+The orphan table (data/orphan.tsv.gz) includes selected EC identifiers,
+creation years and accepted names from ExplorEnz, the International Union
+of Biochemistry and Molecular Biology (IUBMB) Enzyme Nomenclature database
+(https://enzyme-database.org/). ExplorEnz entries are copyright 2001-2026
+IUBMB. The database authors permit use in other applications with
+acknowledgement of the source. See the Availability section of McDonald,
+Boyce and Tipton, Nucleic Acids Research 37, D593-D597 (2009),
+https://doi.org/10.1093/nar/gkn582. ecbackoff selects, reformats and ranks
+a subset of these records.
+
+Reaction similarity values in the orphan table are calculated from the
+Rhea reaction knowledgebase (https://www.rhea-db.org/), available under
+CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
+See https://www.rhea-db.org/help/license-disclaimer.
