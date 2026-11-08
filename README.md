@@ -29,7 +29,7 @@ The package has no Python dependencies and contains the model and the reference 
 
 ## Run from the unpacked folder (without pip)
 
-Requirements: Python 3.8 or newer; [MMseqs2](https://github.com/soedinglab/MMseqs2) on the `PATH` (or given with `--mmseqs`) for the `run` command (the model was built and checked with 18.8cc5c, commit 8cc5c; another version gives a warning). Nothing else to install: unpack the folder and run `python ecbackoff.py`.
+Requirements: Python 3.9 or newer (tested with 3.9, 3.11, 3.13 and 3.14); [MMseqs2](https://github.com/soedinglab/MMseqs2) on the `PATH` (or given with `--mmseqs`) for the `run` command (the model was built and checked with 18.8cc5c, commit 8cc5c; another version gives a warning). Nothing else to install: unpack the folder and run `python ecbackoff.py`.
 
 Tested on Linux (`selftest` with Python 3.9 and 3.11; the end-to-end checks below with Python 3.11 and MMseqs2 18.8cc5c) and on Windows 11 (Python 3.14 and the official Windows build of MMseqs2 18-8cc5c, `mmseqs-win64.zip`; the program, its self-test and the command-line tests passed there, and the Windows search gave the same hit table and the same result table for the 30 bundled examples as Linux; paths with spaces and Chinese characters worked). Not tested on macOS.
 

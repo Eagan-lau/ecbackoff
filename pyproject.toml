@@ -7,7 +7,7 @@ name = "ecbackoff"
 dynamic = ["version"]
 description = "Inherit an enzyme's EC number only where the neighbourhood of its nearest characterized relative supports it; otherwise three digits, or nothing."
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = "MIT AND CC-BY-4.0 AND LicenseRef-IUBMB-ExplorEnz"
 license-files = ["LICENSE"]
 keywords = ["enzyme", "EC number", "function transfer", "annotation", "MMseqs2", "bioinformatics"]
@@ -19,8 +19,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
 dependencies = []
-# To be filled in before the first upload to PyPI (metadata of an uploaded version cannot be changed):
-# authors = [{ name = "NAME", email = "ADDRESS" }]
+authors = [{ name = "Eagan" }]
 
 [project.urls]
 Homepage = "https://github.com/Eagan-lau/ecbackoff"

@@ -2,6 +2,7 @@
 
 ## 1.2
 
+* Requires Python 3.9 or newer (tested with 3.9, 3.11, 3.13 and 3.14).
 * Experimental additions, kept apart from the validated rule and placed after the validated columns: `p_new_function` (ranking score for a function new to the record), orphan-activity suggestions (`orphan_candidates`, `orphan_names`; `--no-orphan` switches them off) and `--external NAME=FILE`, which reads the output files of CLEAN, DeepECtransformer, ProteInfer and DeepEC that you ran yourself and shows them next to the nearest enzyme.
 * `selftest` also checks the new-function score, the orphan table and the external-file readers.
 * Tested on Linux (Python 3.9 and 3.11) and on Windows 11 (Python 3.14, the official MMseqs2 Windows build).
